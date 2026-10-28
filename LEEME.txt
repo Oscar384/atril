@@ -1,0 +1,8 @@
+ATRIL DE TABS - app para iPad
+
+1. Sube esta carpeta completa (atril-app) a tu hosting, por ejemplo dentro de public_html.
+2. En el iPad abre la dirección en Safari, por ejemplo https://tudominio.com/atril-app/
+3. Toca Compartir y luego "Agregar a pantalla de inicio".
+4. Abre Atril desde el ícono. Funciona a pantalla completa y sin internet.
+
+Para pasar tus canciones: en la versión anterior, Ajustes > Exportar respaldo; en la app instalada, Ajustes > Importar archivo o Pegar respaldo.
