@@ -138,11 +138,14 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .tabblock b{color:var(--fg);font-weight:700}
 
 .guide{position:absolute;left:0;right:0;top:24%;height:2.6em;background:linear-gradient(var(--live-soft),transparent);border-top:2px solid var(--live);pointer-events:none;opacity:0;transition:opacity .3s}
-.playing.show-guide .guide{opacity:.6}
+.playing.show-guide .guide,.paused .guide{opacity:.6}
+.paused .guide{opacity:.85}
+.resume{position:absolute;right:max(24px,env(safe-area-inset-right,0px));top:24%;transform:translateY(calc(-100% - 8px));display:flex;align-items:center;gap:10px;padding:6px 6px 6px 14px;border-radius:999px;background:var(--glass);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--live);box-shadow:var(--shadow);font:700 13px var(--f-ui);color:var(--live);z-index:3}
+.resume button{border:0;border-radius:999px;background:var(--live);color:var(--on-live);font:700 13px var(--f-ui);min-height:36px;padding:0 14px}
 .count{position:absolute;inset:0;display:grid;place-items:center;font:800 min(36vw,220px)/1 var(--f-display);color:var(--live);pointer-events:none}
 .toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);font:700 15px var(--f-ui);padding:10px 18px;border-radius:999px;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap;z-index:5}
 .toast.show{opacity:1}
-.focus .top,.focus .strip{display:none}
+.focus .top{display:none}
 
 /* dock */
 .dock{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 16px;
@@ -262,9 +265,10 @@ label.f{display:grid;gap:5px;font:600 12px var(--f-ui);letter-spacing:.04em;colo
       <main id="stage"><article id="sheet" class="gut"></article></main>
       <div class="guide" aria-hidden="true"></div>
       <div class="count" id="count" hidden></div>
+      <div class="resume" id="resume" hidden><span>En pausa aquí</span><button id="bRestart">Empezar de cero</button></div>
       <div class="toast" id="toast" role="status"></div>
       <div class="dock" id="dock">
-        <button class="ib flat" id="bTop" aria-label="Volver al inicio"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14M12 20V9M7 13l5-5 5 5"/></svg></button>
+        <button class="ib flat" id="bTop" aria-label="Empezar de cero" title="Empezar de cero"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14M12 20V9M7 13l5-5 5 5"/></svg></button>
         <div class="playwrap">
           <svg class="ring" viewBox="0 0 68 68" aria-hidden="true"><circle class="bgc" cx="34" cy="34" r="32"/><circle class="fgc" id="ring" cx="34" cy="34" r="32" stroke-dasharray="201.06" stroke-dashoffset="201.06"/></svg>
           <button class="play" id="bPlay" aria-label="Reproducir"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
@@ -582,7 +586,7 @@ E|---------------|---------------|-3-------------|-0-------------|
 Am        C         G         E
 Abajo, abajo-arriba, arriba-abajo-arriba, dos veces por acorde.`}
 ];
-const ACTIONS = {play:'Reproducir / pausar', faster:'Más rápido', slower:'Más lento', pageDown:'Bajar una pantalla', pageUp:'Subir una pantalla', top:'Volver al inicio', next:'Siguiente canción', prev:'Canción anterior'};
+const ACTIONS = {play:'Reproducir / pausar', faster:'Más rápido', slower:'Más lento', pageDown:'Bajar una pantalla', pageUp:'Subir una pantalla', top:'Empezar de cero', next:'Siguiente canción', prev:'Canción anterior'};
 const DEFAULT_KEYS = {Space:'play', Enter:'play', PageDown:'pageDown', ArrowRight:'pageDown', PageUp:'pageUp', ArrowLeft:'pageUp', ArrowUp:'faster', ArrowDown:'slower', Home:'top', KeyN:'next', KeyP:'prev'};
 
 let songs = LS.get('atril.songs', null);
@@ -664,12 +668,12 @@ function tick(t){
   if(jump){ const d = jump*.18; pos += d; jump -= d; if(Math.abs(jump) < 1){ pos += jump; jump = 0 } }
   const mx = maxScroll();
   pos = Math.max(0, pos);
-  if(pos >= mx){ pos = mx; stage.scrollTop = pos; pause(); toast('Fin de la canción'); return }
+  if(pos >= mx){ pos = mx; stage.scrollTop = pos; pause(); clearMark(); toast('Fin de la canción'); return }
   stage.scrollTop = pos;
   progress();
   requestAnimationFrame(tick);
 }
-stage.addEventListener('scroll', () => { if(Math.abs(stage.scrollTop-pos) > 3) pos = stage.scrollTop; progress() }, {passive:true});
+stage.addEventListener('scroll', () => { if(Math.abs(stage.scrollTop-pos) > 3) pos = stage.scrollTop; if(!playing && stage.scrollTop <= 5) clearMark(); progress() }, {passive:true});
 function progress(){
   const mx = maxScroll(), f = mx ? Math.min(1, stage.scrollTop/mx) : 0;
   $('#ring').style.strokeDashoffset = (201.06*(1-f)).toFixed(1);
@@ -678,12 +682,15 @@ function progress(){
 }
 async function lock(){ try{ if(navigator.wakeLock) wake = await navigator.wakeLock.request('screen') }catch(e){} }
 function start(){
-  playing = true; last = null; app.classList.add('playing'); app.classList.toggle('focus', set.focus);
+  clearMark(); playing = true; last = null; app.classList.add('playing'); app.classList.toggle('focus', set.focus);
   $('#bPlay').setAttribute('aria-label','Pausar');
   $('#playIcon').innerHTML = '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>';
   lock(); requestAnimationFrame(tick);
 }
+function clearMark(){ app.classList.remove('paused'); $('#resume').hidden = true }
 function pause(){
+  const wasActive = playing || countTimer;
+  if(wasActive && stage.scrollTop > 5){ app.classList.add('paused'); $('#resume').hidden = false }
   playing = false; clearInterval(countTimer); countTimer = null; $('#count').hidden = true;
   app.classList.remove('playing','focus');
   $('#bPlay').setAttribute('aria-label','Reproducir');
@@ -706,14 +713,15 @@ function page(dir){
   const amt = stage.clientHeight*.7*dir;
   if(playing) jump += amt; else stage.scrollBy({top:amt, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
 }
-function goTop(){ stage.scrollTop = 0; pos = 0; jump = 0; progress() }
-function loadSong(s){ if(!s) return; pause(); song = s; set.cur = s.id; saveSet(); render(); goTop() }
+function goTop(){ stage.scrollTop = 0; pos = 0; jump = 0; clearMark(); progress() }
+function loadSong(s){ if(!s) return; pause(); clearMark(); song = s; set.cur = s.id; saveSet(); render(); goTop() }
 function stepSong(d){ const l = sorted(); const i = l.indexOf(song); loadSong(l[(i+d+l.length)%l.length]) }
 const DO = {play:togglePlay, faster:()=>setSpeed(1), slower:()=>setSpeed(-1), pageDown:()=>page(1), pageUp:()=>page(-1), top:goTop, next:()=>stepSong(1), prev:()=>stepSong(-1)};
 
 /* ---------- controls ---------- */
 $('#bPlay').onclick = togglePlay;
 $('#bTop').onclick = goTop;
+$('#bRestart').onclick = () => { goTop(); toast('Listo para empezar de cero') };
 $('#sUp').onclick = () => setSpeed(1);
 $('#sDn').onclick = () => setSpeed(-1);
 $('#tUp').onclick = () => { song.transpose = Math.min(11, song.transpose+1); saveSongs(); render() };
