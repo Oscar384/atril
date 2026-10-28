@@ -110,7 +110,9 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .dg-x{stroke:var(--muted);stroke-width:1.8;stroke-linecap:round}
 
 /* sheet */
-.stagewrap{position:relative;min-height:0}
+.top{grid-row:1}
+.strip{grid-row:2}
+.stagewrap{position:relative;min-height:0;grid-row:3}
 #stage{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 #sheet{padding-block:30px 75vh;font-family:var(--f-lyric);font-size:var(--song-size);line-height:1.45;max-width:1200px}
 .songhead{font-family:var(--f-ui);margin-bottom:22px;display:grid;gap:6px}
@@ -649,7 +651,11 @@ $('#libList').addEventListener('click', e => {
 
 /* ---------- auto-scroll ---------- */
 let playing = false, pos = 0, last = null, jump = 0, countTimer = null, wake = null;
-const maxScroll = () => Math.max(0, stage.scrollHeight - stage.clientHeight - stage.clientHeight*0.6);
+const maxScroll = () => {
+  const padB = parseFloat(getComputedStyle(sheet).paddingBottom) || 0;
+  const end = stage.scrollHeight - padB - stage.clientHeight*0.32;
+  return Math.max(0, Math.min(stage.scrollHeight - stage.clientHeight, end));
+};
 function tick(t){
   if(!playing) return;
   if(last === null) last = t;
