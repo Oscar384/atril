@@ -112,7 +112,60 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 /* sheet */
 .top{grid-row:1}
 .strip{grid-row:2}
-.stagewrap{position:relative;min-height:0;grid-row:3}
+.stagewrap{position:relative;min-height:0;min-width:0;grid-row:3;container:stage / size}
+.split{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+.sheetwrap{position:relative;min-height:0;min-width:0;grid-row:2;grid-column:1}
+.sheetwrap{container:sheet / inline-size}
+
+/* live chord panel: top band by default (portrait), side column in landscape */
+.live{grid-row:1;grid-column:1;display:none;align-items:stretch;gap:0;min-width:0;background:var(--bar);border-bottom:1px solid var(--line);overflow:hidden}
+.live-on .live.has{display:flex;animation:liveIn .28s ease both}
+@keyframes liveIn{from{opacity:0}to{opacity:1}}
+.lv{display:grid;align-content:start;gap:6px;padding:10px 14px;min-width:0}
+.lv + .lv{border-left:1px solid var(--line)}
+.lv-lab{font:700 10px var(--f-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.lv-now .lv-lab{color:var(--live)}
+.lv-ch{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:flex-start}
+.lc{display:grid;justify-items:center;gap:2px;transition:opacity .2s}
+.lc b{font:800 22px/1 var(--f-mono);color:var(--chord);white-space:nowrap}
+.lc svg{display:block;height:auto}
+.lv-now .lc svg{width:var(--lw-now)}
+.lv-next .lc svg{width:var(--lw-next)}
+.lv-now .lc b{font-size:clamp(24px,3.2vw,34px)}
+.lv-next .lc b{font-size:18px}
+.lv-next{opacity:.78}
+.lv-later{opacity:.6}
+.lv-later .lv-ch{gap:6px}
+.lv-later .chip{font:700 15px var(--f-mono);color:var(--chord);background:var(--chord-soft);padding:4px 8px;border-radius:8px}
+.lv-empty{font:600 14px var(--f-ui);color:var(--muted);padding-block:6px}
+.live{--lw-now:104px;--lw-next:66px}
+.live[data-n="3"],.live[data-n="4"]{--lw-now:84px}
+.live[data-n="5"],.live[data-n="6"]{--lw-now:66px}
+.lv-now{flex:none}
+.lv-next{flex:none}
+.lv-later{flex:1}
+
+@container stage (orientation: landscape) and (min-width: 700px){
+  .split{grid-template-columns:minmax(0,1fr) clamp(220px,26cqw,300px);grid-template-rows:minmax(0,1fr)}
+  .sheetwrap{grid-row:1;grid-column:1}
+  .live{grid-row:1;grid-column:2;flex-direction:column;border-bottom:0;border-left:1px solid var(--line);overflow-y:auto;padding-bottom:16px}
+  .lv{padding:16px 18px}
+  .lv + .lv{border-left:0;border-top:1px solid var(--line)}
+  .lv-now .lv-ch,.lv-next .lv-ch{justify-content:center}
+  .live{--lw-now:min(150px,70cqh);--lw-next:78px}
+  .live[data-n="2"]{--lw-now:104px}
+  .live[data-n="3"],.live[data-n="4"]{--lw-now:92px}
+  .live[data-n="5"],.live[data-n="6"]{--lw-now:72px}
+  .lv-now .lc b{font-size:36px}
+}
+@container stage (max-width: 560px) and (orientation: portrait){
+  .lv-later{display:none}
+  .lv{padding:8px 10px}
+  .live{--lw-now:78px;--lw-next:58px}
+  .live[data-n="3"],.live[data-n="4"],.live[data-n="5"],.live[data-n="6"]{--lw-now:58px}
+  .lv-now .lc b{font-size:22px}
+}
+@media (prefers-reduced-motion: reduce){ .live-on .live.has{animation:none} .lc{transition:none} }
 #stage{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 #sheet{padding-block:30px 75vh;font-family:var(--f-lyric);font-size:var(--song-size);line-height:1.45;max-width:1200px}
 .songhead{font-family:var(--f-ui);margin-bottom:22px;display:grid;gap:6px}
@@ -233,6 +286,11 @@ label.f{display:grid;gap:5px;font:600 12px var(--f-ui);letter-spacing:.04em;colo
 .cname{font:800 44px/1 var(--f-mono);color:var(--chord);margin:4px 0 0}
 .pnav{display:flex;align-items:center;gap:14px;color:var(--muted);font-variant-numeric:tabular-nums}
 
+@container sheet (max-width: 760px){
+  .dock{gap:4px 6px;padding:6px 12px 6px 8px}
+  .dock .sep,.dock .remain{display:none}
+  .ctl .ib{width:36px}
+}
 @media (max-width:899px){
   .app,.app.side-closed{grid-template-columns:minmax(0,1fr)}
   .app .side,.app.side-closed .side{visibility:visible}
@@ -280,6 +338,13 @@ label.f{display:grid;gap:5px;font:600 12px var(--f-ui);letter-spacing:.04em;colo
     </header>
     <nav class="strip gut" id="strip" aria-label="Acordes de la canción"></nav>
     <div class="stagewrap">
+     <div class="split">
+      <aside class="live" id="live" aria-label="Acordes mientras suena la canción" aria-live="off">
+        <div class="lv lv-now"><span class="lv-lab">Ahora</span><div class="lv-ch" id="lvNow"></div></div>
+        <div class="lv lv-next"><span class="lv-lab">Sigue</span><div class="lv-ch" id="lvNext"></div></div>
+        <div class="lv lv-later"><span class="lv-lab">Después</span><div class="lv-ch" id="lvLater"></div></div>
+      </aside>
+      <div class="sheetwrap">
       <main id="stage"><article id="sheet" class="gut"></article></main>
       <div class="guide" aria-hidden="true"></div>
       <div class="count" id="count" hidden></div>
@@ -315,6 +380,8 @@ label.f{display:grid;gap:5px;font:600 12px var(--f-ui);letter-spacing:.04em;colo
         <div class="ctl"><span class="lab">Letra</span><div class="row"><button class="ib" id="fDn" aria-label="Letra más pequeña" style="font-size:14px">A</button><button class="ib" id="fUp" aria-label="Letra más grande" style="font-size:22px">A</button></div></div>
         <div class="remain" id="remain"></div>
       </div>
+      </div>
+     </div>
     </div>
   </section>
 </div>
@@ -350,6 +417,7 @@ B|---1-------0-|"></textarea>
         <div class="row2"><span class="name">Ocultar la barra superior mientras suena</span><label class="toggle"><input type="checkbox" id="optFocus"><span></span></label></div>
         <div class="row2"><span class="name">Cuenta regresiva 3-2-1 al empezar</span><label class="toggle"><input type="checkbox" id="optCount"><span></span></label></div>
         <div class="row2"><span class="name">Franja guía de lectura</span><label class="toggle"><input type="checkbox" id="optGuide"><span></span></label></div>
+        <div class="row2"><span class="name">Panel de acordes al reproducir</span><label class="toggle"><input type="checkbox" id="optLive"><span></span></label></div>
         <div class="row2"><span class="name">Mostrar anotaciones</span><label class="toggle"><input type="checkbox" id="optInk"><span></span></label></div>
       </div>
     </div>
@@ -626,7 +694,7 @@ const DEFAULT_KEYS = {Space:'play', Enter:'play', PageDown:'pageDown', ArrowRigh
 
 let songs = LS.get('atril.songs', null);
 if(!Array.isArray(songs) || !songs.length) songs = JSON.parse(JSON.stringify(SAMPLES));
-const set = Object.assign({inst:'guitar', font:22, strip:true, countIn:true, focus:true, guide:true, theme:'system', side:true, showInk:true, fingerInk:false, pref:{}, keys:{...DEFAULT_KEYS}, cur:songs[0].id}, LS.get('atril.settings', {}));
+const set = Object.assign({inst:'guitar', font:22, strip:true, countIn:true, focus:true, guide:true, theme:'system', side:true, showInk:true, livePanel:true, fingerInk:false, pref:{}, keys:{...DEFAULT_KEYS}, cur:songs[0].id}, LS.get('atril.settings', {}));
 let song = songs.find(s => s.id===set.cur) || songs[0];
 const saveSongs = () => LS.set('atril.songs', songs);
 const saveSet = () => LS.set('atril.settings', set);
@@ -659,6 +727,7 @@ function render(){
   app.classList.toggle('show-guide', set.guide);
   app.classList.toggle('hide-ink', !set.showInk);
   renderInk();
+  invalidateRows(); updateLive(true);
   document.documentElement.style.setProperty('--song-size', set.font+'px');
   drawLib();
   progress();
@@ -672,7 +741,7 @@ function applySide(){
   app.classList.toggle('side-open', !wide.matches && sideOpen);
   $('#bSide').setAttribute('aria-pressed', sideOpen);
 }
-$('#bSide').onclick = () => { sideOpen = !sideOpen; if(wide.matches){ set.side = sideOpen; saveSet() } applySide(); setTimeout(progress, 300) };
+$('#bSide').onclick = () => { sideOpen = !sideOpen; if(wide.matches){ set.side = sideOpen; saveSet() } applySide(); setTimeout(() => { progress(); invalidateRows(); updateLive(true) }, 320) };
 $('#scrim').onclick = () => { sideOpen = false; applySide() };
 wide.addEventListener('change', () => { sideOpen = wide.matches ? set.side : false; applySide() });
 
@@ -689,6 +758,75 @@ $('#libList').addEventListener('click', e => {
   loadSong(songs.find(s => s.id===b.dataset.open));
   if(!wide.matches){ sideOpen = false; applySide() }
 });
+
+
+/* ---------- live chord panel ---------- */
+let rows = null, liveRow = -2;
+const READ_AT = .24;
+function buildRows(){
+  rows = [];
+  const top = stage.getBoundingClientRect().top - stage.scrollTop;
+  for(const b of sheet.querySelectorAll('.ch')){
+    const y = b.getBoundingClientRect().top - top, name = b.dataset.c;
+    const r = rows[rows.length-1];
+    if(r && Math.abs(r.y - y) < 6){ if(r.ch[r.ch.length-1] !== name) r.ch.push(name) }
+    else rows.push({y, ch:[name]});
+  }
+  rows.sort((a,b) => a.y - b.y);
+  liveRow = -2;
+}
+const invalidateRows = () => { rows = null; liveRow = -2 };
+function readY(){ return stage.scrollTop + stage.clientHeight*READ_AT + set.font*.9 }
+const card = (n, w) => { const v = prefV(n); return `<div class="lc"><b>${esc(n)}</b>${v ? diagram(v, w) : ''}</div>` };
+function updateLive(force){
+  if(!app.classList.contains('live-on')) return;
+  if(!rows) buildRows();
+  const y = readY();
+  let lo = 0, hi = rows.length-1, idx = -1;
+  while(lo <= hi){ const m = (lo+hi) >> 1; if(rows[m].y <= y){ idx = m; lo = m+1 } else hi = m-1 }
+  if(idx === liveRow && !force) return;
+  liveRow = idx;
+  const now = idx >= 0 ? rows[idx].ch : [];
+  // próximos acordes distintos al que suena
+  const upcoming = [];
+  let lastName = now[now.length-1];
+  for(let i = idx+1; i < rows.length && upcoming.length < 8; i++){
+    for(const n of rows[i].ch){ if(n !== lastName){ upcoming.push({n, row:i}); lastName = n } }
+  }
+  const nextRow = upcoming.length ? upcoming[0].row : -1;
+  const next = upcoming.filter(u => u.row === nextRow).map(u => u.n).slice(0, 4);
+  const later = upcoming.filter(u => u.row !== nextRow).map(u => u.n).slice(0, 5);
+  $('#live').dataset.n = Math.min(now.length, 6);
+  $('#lvNow').innerHTML = now.length ? now.slice(0,6).map(n => card(n, 120)).join('') : '<span class="lv-empty">Prepárate</span>';
+  $('#lvNext').innerHTML = next.length ? next.map(n => card(n, 80)).join('') : '<span class="lv-empty">Fin</span>';
+  $('#lvLater').innerHTML = later.map(n => `<span class="chip">${esc(n)}</span>`).join('');
+  $('#lvLater').parentElement.hidden = !later.length;
+}
+// mantener la misma línea bajo la franja verde cuando cambia el espacio disponible
+function keepAnchor(fn){
+  const gy = stage.getBoundingClientRect().top + stage.clientHeight*READ_AT;
+  let el = null, off = 0;
+  for(const c of sheet.querySelectorAll(':scope > [data-a]')){
+    const r = c.getBoundingClientRect();
+    if(r.bottom >= gy){ el = c; off = r.top - gy; break }
+  }
+  fn();
+  invalidateRows();
+  if(el && stage.scrollTop > 5){
+    const gy2 = stage.getBoundingClientRect().top + stage.clientHeight*READ_AT;
+    stage.scrollTop += el.getBoundingClientRect().top - gy2 - off;
+    pos = stage.scrollTop;
+  }
+}
+function syncLive(){
+  const session = playing || !!countTimer || app.classList.contains('paused');
+  const want = set.livePanel && session && sheet.querySelector('.ch') !== null;
+  const has = $('#live').classList.contains('has') && app.classList.contains('live-on');
+  if(want === has) return;
+  keepAnchor(() => { app.classList.toggle('live-on', want); $('#live').classList.toggle('has', want) });
+  if(want) updateLive(true);
+}
+window.addEventListener('resize', () => { invalidateRows(); updateLive(true) });
 
 /* ---------- auto-scroll ---------- */
 let playing = false, pos = 0, last = null, jump = 0, countTimer = null, wake = null;
@@ -707,10 +845,10 @@ function tick(t){
   pos = Math.max(0, pos);
   if(pos >= mx){ pos = mx; stage.scrollTop = pos; pause(); clearMark(); toast('Fin de la canción'); return }
   stage.scrollTop = pos;
-  progress();
+  progress(); updateLive();
   requestAnimationFrame(tick);
 }
-stage.addEventListener('scroll', () => { if(Math.abs(stage.scrollTop-pos) > 3) pos = stage.scrollTop; if(!playing && stage.scrollTop <= 5) clearMark(); progress() }, {passive:true});
+stage.addEventListener('scroll', () => { if(Math.abs(stage.scrollTop-pos) > 3) pos = stage.scrollTop; if(!playing && stage.scrollTop <= 5) clearMark(); progress(); if(!playing) updateLive() }, {passive:true});
 function progress(){
   const mx = maxScroll(), f = mx ? Math.min(1, stage.scrollTop/mx) : 0;
   $('#ring').style.strokeDashoffset = (201.06*(1-f)).toFixed(1);
@@ -719,17 +857,19 @@ function progress(){
 }
 async function lock(){ try{ if(navigator.wakeLock) wake = await navigator.wakeLock.request('screen') }catch(e){} }
 function start(){
-  clearMark(); playing = true; last = null; app.classList.add('playing'); app.classList.toggle('focus', set.focus);
+  keepAnchor(() => { app.classList.remove('paused'); playing = true; last = null; app.classList.add('playing'); app.classList.toggle('focus', set.focus) });
+  syncLive();
   $('#bPlay').setAttribute('aria-label','Pausar');
   $('#playIcon').innerHTML = '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>';
   lock(); requestAnimationFrame(tick);
 }
-function clearMark(){ app.classList.remove('paused') }
+function clearMark(){ app.classList.remove('paused'); syncLive() }
 function pause(){
   const wasActive = playing || countTimer;
   if(wasActive && stage.scrollTop > 5) app.classList.add('paused');
   playing = false; clearInterval(countTimer); countTimer = null; $('#count').hidden = true;
-  app.classList.remove('playing','focus');
+  keepAnchor(() => app.classList.remove('playing','focus'));
+  syncLive();
   $('#bPlay').setAttribute('aria-label','Reproducir');
   $('#playIcon').innerHTML = '<path d="M8 5v14l11-7z"/>';
   try{ wake && wake.release() }catch(e){} wake = null;
@@ -741,6 +881,7 @@ function togglePlay(){
   if(set.countIn && stage.scrollTop < 5){
     let n = 3; const c = $('#count'); c.textContent = n; c.hidden = false; app.classList.toggle('focus', set.focus);
     countTimer = setInterval(() => { n--; if(n<=0){ clearInterval(countTimer); countTimer = null; c.hidden = true; start() } else c.textContent = n }, 800);
+    syncLive();
   } else start();
 }
 document.addEventListener('visibilitychange', () => { if(playing && document.visibilityState==='visible') lock() });
@@ -837,7 +978,7 @@ function drawKeys(){
     const ks = Object.keys(set.keys).filter(k => set.keys[k]===a);
     return `<div class="row2"><div style="min-width:0"><div class="name">${label}</div><div class="chips">${ks.map(k=>`<span class="kchip">${esc(keyName(k))}<button data-rm="${esc(k)}" aria-label="Quitar ${esc(keyName(k))}">×</button></span>`).join('') || '<span class="help">Sin tecla</span>'}</div></div><button class="btn${learning===a?' learning':''}" data-learn="${a}">${learning===a?'Pise el pedal…':'Asignar'}</button></div>`;
   }).join('');
-  $('#optCount').checked = set.countIn; $('#optFocus').checked = set.focus; $('#optGuide').checked = set.guide; $('#optInk').checked = set.showInk;
+  $('#optCount').checked = set.countIn; $('#optFocus').checked = set.focus; $('#optGuide').checked = set.guide; $('#optInk').checked = set.showInk; $('#optLive').checked = set.livePanel;
 }
 $('#bSet').onclick = () => { drawKeys(); applyTheme(); $('#pasteBox').hidden = true; open('#ovSet') };
 $('#keyList').addEventListener('click', e => {
@@ -849,6 +990,7 @@ $('#optCount').onchange = e => { set.countIn = e.target.checked; saveSet() };
 $('#optFocus').onchange = e => { set.focus = e.target.checked; saveSet() };
 $('#optGuide').onchange = e => { set.guide = e.target.checked; saveSet(); render() };
 $('#optInk').onchange = e => { set.showInk = e.target.checked; saveSet(); render() };
+$('#optLive').onchange = e => { set.livePanel = e.target.checked; saveSet(); syncLive() };
 $('#kReset').onclick = () => { set.keys = {...DEFAULT_KEYS}; saveSet(); drawKeys() };
 $('#themeSeg').addEventListener('click', e => { const b = e.target.closest('[data-theme-opt]'); if(!b) return; set.theme = b.dataset.themeOpt; saveSet(); applyTheme() });
 
