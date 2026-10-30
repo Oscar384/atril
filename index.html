@@ -388,6 +388,11 @@ label.f{display:grid;gap:5px;font:600 12px var(--f-ui);letter-spacing:.04em;colo
 .tn-str.done::after{content:"";position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--live)}
 .tn-foot{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px}
 #tnAuto[aria-pressed="true"]{background:var(--chord-soft);border-color:var(--chord);color:var(--chord)}
+.tn-level{position:relative;width:min(240px,70%);height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
+.tn-level i{position:absolute;inset:0 auto 0 0;width:0;background:var(--live);border-radius:3px;transition:width .08s linear}
+.tn-level b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--muted);left:0}
+.tn-sens{display:flex;align-items:center;gap:8px;font:600 14px var(--f-ui);color:var(--muted)}
+.tn-sens .seg button{min-height:34px;padding:0 11px}
 .tn-a4{display:flex;align-items:center;gap:6px;font:600 14px var(--f-ui);color:var(--muted)}
 .tn-a4 b{font:700 16px var(--f-mono);color:var(--fg);min-width:3ch;text-align:center}
 .tn-a4 .ib{width:38px;height:38px}
@@ -573,12 +578,14 @@ B|---1-------0-|"></textarea>
         <div class="tn-name" id="tnName">Toque una cuerda</div>
         <div class="tn-sub"><span id="tnCents"></span><span id="tnHz"></span></div>
         <div class="tn-hint" id="tnHint"></div>
+        <div class="tn-level" aria-hidden="true"><i id="tnLevel"></i><b id="tnGate"></b></div>
       </div>
     </div>
     <div class="tn-strings" id="tnStrings"></div>
     <div class="tn-foot">
       <button class="btn" id="tnAuto" aria-pressed="true">Detectar cuerda sola</button>
       <button class="btn" id="tnRef">Escuchar nota</button>
+      <div class="tn-sens"><span>Sensibilidad</span><div class="seg" role="group" aria-label="Sensibilidad del micrófono" id="tnSens"><button data-sn="1">Normal</button><button data-sn="2">Alta</button><button data-sn="3">Máxima</button></div></div>
       <div class="tn-a4"><span>La =</span><button class="ib" id="tnA4dn" aria-label="Bajar referencia">−</button><b id="tnA4">440</b><button class="ib" id="tnA4up" aria-label="Subir referencia">+</button><span>Hz</span></div>
     </div>
     <div class="tn-start" id="tnStart">
@@ -1678,7 +1685,8 @@ const TUNINGS = {
 };
 const NOTE_EN = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const NOTE_ES = ['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
-set.tuner = Object.assign({inst:set.inst, idx:{guitar:0, uke:0}, a4:440, auto:true}, set.tuner || {});
+set.tuner = Object.assign({inst:set.inst, idx:{guitar:0, uke:0}, a4:440, auto:true, sens:2}, set.tuner || {});
+const SENS = {1:{gain:3, k:3.2, min:.004}, 2:{gain:8, k:2.2, min:.0025}, 3:{gain:20, k:1.6, min:.0015}};
 const TN = {ctx:null, stream:null, an:null, buf:null, d:null, raf:0, frame:0, hist:[], cents:0, sel:0, tuned:new Set(),
   okSince:0, lastHeard:0, refUntil:0, advanceT:0};
 const tuning = () => TUNINGS[set.tuner.inst][set.tuner.idx[set.tuner.inst]] || TUNINGS[set.tuner.inst][0];
@@ -1693,6 +1701,7 @@ function tnDraw(){
   $('#tnAuto').hidden = !t.m; $('#tnAuto').setAttribute('aria-pressed', set.tuner.auto);
   $('#tnRef').hidden = !t.m;
   $('#tnA4').textContent = set.tuner.a4;
+  tnSens();
 }
 function tnTicks(){
   let h = '';
@@ -1710,7 +1719,8 @@ function tnNeedle(c){ $('#tnNeedle').setAttribute('transform', `rotate(${(Math.m
 function yin(buf, sr){
   let rms = 0; for(let i = 0; i < buf.length; i++) rms += buf[i]*buf[i];
   rms = Math.sqrt(rms/buf.length);
-  if(rms < 0.006) return null;
+  TN.rms = rms;
+  if(rms < TN.gate) return null;
   const tauMin = Math.floor(sr/1100), tauMax = Math.min(Math.floor(sr/60), buf.length >> 1), W = buf.length - tauMax;
   if(!TN.d || TN.d.length < tauMax+2) TN.d = new Float32Array(tauMax+2);
   const d = TN.d;
@@ -1718,7 +1728,7 @@ function yin(buf, sr){
   let run = 0;
   for(let t = 1; t <= tauMax; t++){ run += d[t]; d[t] = run ? d[t]*t/run : 1 }
   let tau = -1;
-  for(let t = tauMin; t <= tauMax; t++){ if(d[t] < 0.12){ while(t+1 <= tauMax && d[t+1] < d[t]) t++; tau = t; break } }
+  for(let t = tauMin; t <= tauMax; t++){ if(d[t] < TN.yinTh){ while(t+1 <= tauMax && d[t+1] < d[t]) t++; tau = t; break } }
   if(tau < 2) return null;
   const x0 = d[tau-1], x1 = d[tau], x2 = tau+1 <= tauMax ? d[tau+1] : x1, den = x0 + x2 - 2*x1;
   const shift = den ? (x0 - x2)/(2*den) : 0;
@@ -1730,8 +1740,17 @@ function tnLoop(){
   const now = performance.now();
   if(now < TN.refUntil) return;
   TN.an.getFloatTimeDomainData(TN.buf);
+  // piso de ruido adaptable: aprende el silencio del cuarto y solo escucha lo que sobresale
+  let e = 0; for(let i = 0; i < TN.buf.length; i += 4) e += TN.buf[i]*TN.buf[i];
+  const lvl = Math.sqrt(e/(TN.buf.length/4)), sc = SENS[set.tuner.sens] || SENS[2];
+  TN.floor = lvl < TN.floor ? TN.floor*.9 + lvl*.1 : TN.floor*.995 + lvl*.005;
+  TN.gate = Math.max(sc.min, TN.floor*sc.k);
+  TN.yinTh = now - TN.lastHeard < 400 ? .2 : .15;      // más tolerante mientras la nota se apaga
+  const toPct = v => Math.min(100, Math.sqrt(v/.25)*100);
+  $('#tnLevel').style.width = toPct(lvl).toFixed(1) + '%';
+  $('#tnGate').style.left = toPct(TN.gate).toFixed(1) + '%';
   const r = yin(TN.buf, TN.ctx.sampleRate);
-  if(!r){ if(now - TN.lastHeard > 700){ tnSetState('tn-idle'); $('#tnHint').textContent = ''; TN.hist = [] } return }
+  if(!r){ if(now - TN.lastHeard > 1500){ tnSetState('tn-idle'); $('#tnHint').textContent = ''; TN.hist = [] } return }
   TN.lastHeard = now;
   // mediana de las últimas lecturas; si la nota cambia de golpe, empezar de nuevo
   const h = TN.hist;
@@ -1794,8 +1813,12 @@ async function tnStart(){
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 55;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
     const an = ctx.createAnalyser(); an.fftSize = 4096;
-    src.connect(hp); hp.connect(lp); lp.connect(an);
-    Object.assign(TN, {ctx, stream, an, buf:new Float32Array(an.fftSize), hist:[], lastHeard:0});
+    // preamplificador + compresor: sube las notas suaves y sostiene la cuerda mientras se apaga
+    const gain = ctx.createGain(); gain.gain.value = (SENS[set.tuner.sens] || SENS[2]).gain;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -38; comp.knee.value = 10; comp.ratio.value = 10; comp.attack.value = .003; comp.release.value = .25;
+    src.connect(hp); hp.connect(lp); lp.connect(gain); gain.connect(comp); comp.connect(an);
+    Object.assign(TN, {ctx, stream, an, gain, buf:new Float32Array(an.fftSize), hist:[], lastHeard:0, floor:.01, gate:.003, yinTh:.15});
     $('#tnStart').hidden = true;
     cancelAnimationFrame(TN.raf); tnLoop();
   }catch(e){
@@ -1842,6 +1865,8 @@ $('#tnTunings').addEventListener('click', e => { const b = e.target.closest('[da
 $('#tnStrings').addEventListener('click', e => { const b = e.target.closest('[data-ts]'); if(!b) return; TN.sel = +b.dataset.ts; set.tuner.auto = false; TN.okSince = 0; saveSet(); tnDraw() });
 $('#tnAuto').onclick = () => { set.tuner.auto = !set.tuner.auto; saveSet(); tnDraw() };
 $('#tnRef').onclick = tnRef;
+function tnSens(){ document.querySelectorAll('[data-sn]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.sn === set.tuner.sens)); if(TN.gain) TN.gain.gain.value = (SENS[set.tuner.sens] || SENS[2]).gain }
+$('#tnSens').addEventListener('click', e => { const b = e.target.closest('[data-sn]'); if(!b) return; set.tuner.sens = +b.dataset.sn; saveSet(); tnSens() });
 $('#tnA4dn').onclick = () => { set.tuner.a4 = Math.max(430, set.tuner.a4 - 1); saveSet(); tnDraw() };
 $('#tnA4up').onclick = () => { set.tuner.a4 = Math.min(450, set.tuner.a4 + 1); saveSet(); tnDraw() };
 new MutationObserver(() => { if($('#ovTuner').hidden && TN.stream) tnStop() }).observe($('#ovTuner'), {attributes:true, attributeFilter:['hidden']});
