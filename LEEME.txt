@@ -1,8 +1,9 @@
-ATRIL DE TABS - app para iPad
+ATRIL - versión 1.5 (cierra la etapa 1)
+Incluye: nuevo Inicio y paleta sobria, base de datos interna, piano real, reloj musical, metrónomo y sincronización.
 
-1. Sube esta carpeta completa (atril-app) a tu hosting, por ejemplo dentro de public_html.
-2. En el iPad abre la dirección en Safari, por ejemplo https://tudominio.com/atril-app/
-3. Toca Compartir y luego "Agregar a pantalla de inicio".
-4. Abre Atril desde el ícono. Funciona a pantalla completa y sin internet.
-
-Para pasar tus canciones: en la versión anterior, Ajustes > Exportar respaldo; en la app instalada, Ajustes > Importar archivo o Pegar respaldo.
+Cómo actualizar en GitHub Pages:
+1. En tu repositorio de Atril, borra los archivos de la versión anterior (index.html, sw.js, manifest.webmanifest y las carpetas fonts, icons, assets y samples si existen).
+2. Sube TODO el contenido de esta carpeta: index.html, sw.js, registerSW.js, workbox-*.js, manifest.webmanifest y las carpetas assets, icons y samples.
+3. Espera uno o dos minutos. Abre Atril en el iPad con internet, ciérralo por completo y vuelve a abrirlo.
+4. En el Inicio toca «Activar sincronización» y entra con el correo y la contraseña que creaste en Firebase.
+5. Haz lo mismo en la Mac (Chrome, https://oscar384.github.io/atril/).
