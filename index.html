@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob: data:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,9 +13,9 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <title>Atril de Tabs</title>
-  <script type="module" crossorigin src="./assets/index-D6C9Iu2x.js"></script>
+  <script type="module" crossorigin src="./assets/index-DiHXjowA.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/ink-ObEIVRGv.js">
-  <link rel="stylesheet" crossorigin href="./assets/index-C5BJFHwu.css">
+  <link rel="stylesheet" crossorigin href="./assets/index-BxWsQ3fC.css">
 <link rel="manifest" href="./manifest.webmanifest"></head>
 <body>
 <div class="app" id="app">
@@ -178,6 +179,7 @@ B|---1-------0-|"></textarea>
     <div class="grp"><h3>Respaldo de canciones</h3>
       <p class="help">Las canciones viven en este iPad. Exporte un respaldo para pasarlas a la app instalada o a otro equipo.</p>
       <div class="btnrow"><button class="btn" id="bExport">Exportar respaldo</button><button class="btn" id="bImport2">Importar archivo</button><button class="btn" id="bPasteOpen">Pegar respaldo</button></div>
+      <p class="help" id="expAviso" role="alert" hidden></p>
       <div id="pasteBox" hidden class="grp"><textarea id="pasteText" rows="5" placeholder="Pegue aquí el texto del respaldo"></textarea><div class="btnrow"><button class="btn primary" id="bPasteLoad">Cargar respaldo</button></div></div>
     </div>
     <div class="grp"><h3>Versión de la app</h3>
@@ -226,7 +228,7 @@ B|---1-------0-|"></textarea>
 </div></div>
 
 <div class="ov pop" id="ovSheet" hidden><div class="panel" role="dialog" aria-labelledby="shTitle"><div class="pbody sheet">
-  <p class="sh-title" id="shTitle"></p><p class="help sh-sub" id="shSub"></p><div class="sh-list" id="shList"></div><button class="btn" data-close>Cancelar</button>
+  <p class="sh-title" id="shTitle"></p><p class="help sh-sub" id="shSub"></p><div class="sh-list" id="shList"></div><label class="sh-check" id="shExtra" hidden><input type="checkbox" id="impAjustes"><span>Restaurar también los ajustes de este respaldo<small>Letra, tema, pedal, afinador, Inicio y metrónomo. Sin marcar, este equipo conserva los suyos.</small></span></label><button class="btn" data-close>Cancelar</button>
 </div></div></div>
 
 <div class="ov pop" id="ovPick" hidden><div class="panel" role="dialog" aria-labelledby="pkTitle"><div class="pbody sheet">
